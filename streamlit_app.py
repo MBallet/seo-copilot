@@ -4,7 +4,7 @@ from openai import OpenAI
 # Show title and description.
 st.title("💬 SEO Copilot")
 st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
+    "This is a simple chatbot that uses OpenAI's GPT model to generate responses. "
 )
 
 openai_api_key = st.secrets["OPENAI_API_KEY"]
@@ -20,6 +20,19 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Dropdown to select model
+    model = st.selectbox(
+        "Choose a model:",
+        ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
+    )
+
+    # File uploader for reference files
+    uploaded_files = st.file_uploader("Upload reference files", accept_multiple_files=True)
+    reference_contents = {}
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            reference_contents[uploaded_file.name] = uploaded_file.getvalue().decode("utf-8")
+
     # Display the existing chat messages via `st.chat_message`.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -34,13 +47,18 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
+        # Prepare the messages and files for the OpenAI API request
+        messages = [
+            {"role": m["role"], "content": m["content"]}
+            for m in st.session_state.messages
+        ]
+        if reference_contents:
+            messages.append({"role": "system", "content": str(reference_contents)})
+
         # Generate a response using the OpenAI API.
         stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
+            model=model,
+            messages=messages,
             stream=True,
         )
 
